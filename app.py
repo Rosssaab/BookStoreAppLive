@@ -8,10 +8,10 @@ app = Flask(__name__, static_folder='static')
 app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
 
 # Database connection configuration
-server = r'microbox\sqlexpress'  # Note the 'r' before the string
+server = 'bookstoredatabaseserver.database.windows.net'  # Note the 'r' before the string
 database = 'BookstoreDB'
-username = 'Flask'
-password = 'flask'
+username = 'BsAdm'
+password = 'Oracle69#'
 driver = '{ODBC Driver 17 for SQL Server}'
 
 conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
