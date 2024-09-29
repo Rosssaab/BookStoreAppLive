@@ -1,26 +1,33 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual Environment
-venv/
-ENV/
-
-# Flask
-instance/
-.webassets-cache
-
-# SQLAlchemy
-*.db
-
-# IDEs
-.vscode/
-.idea/
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# Environment variables
-.env
+   # Python
+   __pycache__/
+   *.py[cod]
+   *$py.class
+   *.so
+   
+   # Virtual Environment
+   venv/
+   ENV/
+   
+   # IDEs
+   .vscode/
+   .idea/
+   
+   # Logs
+   *.log
+   
+   # Temporary files
+   *.tmp
+   
+   # System Files
+   .DS_Store
+   Thumbs.db
+   
+   # Dependencies
+   /node_modules
+   
+   # Build outputs
+   /build
+   /dist
+   
+   # Local configuration
+   .env
