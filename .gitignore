@@ -1,0 +1,33 @@
+   # Python
+   __pycache__/
+   *.py[cod]
+   *$py.class
+   *.so
+   
+   # Virtual Environment
+   venv/
+   ENV/
+   
+   # IDEs
+   .vscode/
+   .idea/
+   
+   # Logs
+   *.log
+   
+   # Temporary files
+   *.tmp
+   
+   # System Files
+   .DS_Store
+   Thumbs.db
+   
+   # Dependencies
+   /node_modules
+   
+   # Build outputs
+   /build
+   /dist
+   
+   # Local configuration
+   .env
