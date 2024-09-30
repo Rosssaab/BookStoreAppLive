@@ -7,7 +7,7 @@ import os
 
 app = Flask(__name__, static_folder='static')
 # Initialize visitor count
-visitor_count = 101
+visitor_count = 151
 app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
 
 # Database connection configuration
