@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify, session
 import pyodbc
+import secrets
 from datetime import datetime
 from math import ceil
 import os
@@ -37,7 +38,7 @@ def count_visitor():
 
             # Get location (optional, you can remove this if you don't want to log location)
             try:
-                response = requests.get(f'https://ipapi.co/{ip_address}/json/').json()
+                response = request.get(f'https://ipapi.co/{ip_address}/json/').json()
                 location = response.get('city', '') + ', ' + response.get('country_name', '')
             except:
                 location = 'Unknown'
@@ -59,15 +60,20 @@ def inject_visitor_count():
 def serve_static(filename):
     return send_from_directory(app.static_folder, filename)
 
-"""
-@app.route('/static/<path:filename>')
-def serve_static(filename):
-    return send_from_directory(app.static_folder, filename)
-"""
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# Add secret visitors.html page route
+@app.route('/visitor_log')
+def secret_visitor_log():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT TOP 100 * FROM Visitor_log ORDER BY VisitTime DESC")
+    visitors = cursor.fetchall()
+    conn.close()
+    return render_template('visitor.html', visitors=visitors)
 
 @app.route('/countries', methods=['GET', 'POST'])
 def countries():

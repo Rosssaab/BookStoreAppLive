@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Secret Visitor Log{% endblock %}
+
+{% block content %}
+<h1>Secret Visitor Log</h1>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Visit Time</th>
+            <th>IP Address</th>
+            <th>Location</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for visitor in visitors %}
+        <tr>
+            <td>{{ visitor.VisitTime }}</td>
+            <td>{{ visitor.IpAddress }}</td>
+            <td>{{ visitor.Location }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
