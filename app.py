@@ -29,6 +29,27 @@ def count_visitor():
         visitor_count += 1
         session['visited'] = True
 
+        # Log visitor
+        if request.endpoint != 'static':
+            ip_address = request.remote_addr
+            # If you're behind a proxy, you might need to use this instead:
+            # ip_address = request.headers.get('X-Forwarded-For', request.remote_addr)
+
+            # Get location (optional, you can remove this if you don't want to log location)
+            try:
+                response = requests.get(f'https://ipapi.co/{ip_address}/json/').json()
+                location = response.get('city', '') + ', ' + response.get('country_name', '')
+            except:
+                location = 'Unknown'
+
+            # Insert into Visitor_log
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO Visitor_log (IpAddress, Location) VALUES (?, ?)", ip_address, location)
+            conn.commit()
+            cursor.close()
+            conn.close()
+
 # Add the context processor here
 @app.context_processor
 def inject_visitor_count():
