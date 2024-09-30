@@ -1,10 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify, session
 import pyodbc
 from datetime import datetime
 from math import ceil
 import os
 
 app = Flask(__name__, static_folder='static')
+# Initialize visitor count
+visitor_count = 101
 app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
 
 # Database connection configuration
@@ -19,13 +21,32 @@ conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};
 def get_db_connection():
     return pyodbc.connect(conn_str)
 
+# Add the count_visitor function here
+@app.before_request
+def count_visitor():
+    global visitor_count
+    if 'visited' not in session:
+        visitor_count += 1
+        session['visited'] = True
+
+# Add the context processor here
+@app.context_processor
+def inject_visitor_count():
+    return dict(visitor_count=visitor_count)
+
 @app.route('/static/<path:filename>')
 def serve_static(filename):
     return send_from_directory(app.static_folder, filename)
 
+"""
+@app.route('/static/<path:filename>')
+def serve_static(filename):
+    return send_from_directory(app.static_folder, filename)
+"""
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @app.route('/countries', methods=['GET', 'POST'])
 def countries():

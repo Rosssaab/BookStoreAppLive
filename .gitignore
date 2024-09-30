@@ -1,33 +1,107 @@
-   # Python
-   __pycache__/
-   *.py[cod]
-   *$py.class
-   *.so
-   
-   # Virtual Environment
-   venv/
-   ENV/
-   
-   # IDEs
-   .vscode/
-   .idea/
-   
-   # Logs
-   *.log
-   
-   # Temporary files
-   *.tmp
-   
-   # System Files
-   .DS_Store
-   Thumbs.db
-   
-   # Dependencies
-   /node_modules
-   
-   # Build outputs
-   /build
-   /dist
-   
-   # Local configuration
-   .env
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.spyderproject
+.spyproject
+.ropeproject
+
+# Logs
+*.log
+log/
+logs/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*~
+
+# System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Dependencies
+/node_modules
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Build outputs
+/build
+/dist
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Local configuration
+.env
+.env.local
+.env.*.local
+
+# Flask stuff
+instance/
+.webassets-cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# pytype static type analyzer
+.pytype/
+
+# Cython debug symbols
+cython_debug/
+
+# Database
+*.sqlite3
+*.db
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
