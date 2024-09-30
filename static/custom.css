@@ -70,3 +70,15 @@
 .breadcrumb-item:hover {
     transform: translateY(-2px);
 }
+
+.table.table-striped {
+    background-color: #FFFAF0; /* This is a light cream color */
+}
+
+.table.table-striped tbody tr:nth-of-type(odd) {
+    background-color: #FFF5E6; /* Slightly darker cream for striped effect */
+}
+
+.table.table-striped tbody tr:nth-of-type(even) {
+    background-color: #FFFAF0; /* Same as the table background */
+}
