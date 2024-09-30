@@ -18,6 +18,17 @@
         .breadcrumb {
             padding-left: 0;
         }
+        @media (max-width: 768px) {
+            .banner-row h1 {
+                font-size: 1.5rem;
+            }
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+            .nav-link {
+                padding: 0.5rem 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -25,10 +36,10 @@
     <div class="banner-row bg-primary text-white py-3">
         <div class="content-wrapper">
             <div class="row align-items-center">
-                <div class="col-md-8">
+                <div class="col-12 col-md-8 mb-2 mb-md-0">
                     <h1 class="mb-0">Ross's Demo Bookstore</h1>
                 </div>
-                <div class="col-md-4 text-md-end">
+                <div class="col-12 col-md-4 text-md-end">
                     <p class="mb-0">Welcome, User!</p>
                 </div>
             </div>
