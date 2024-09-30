@@ -120,8 +120,8 @@
         const dropdownItems = document.querySelectorAll('.dropdown-item');
         const themeLink = document.getElementById('bootswatch-theme');
 
-        // Set default theme or load from localStorage
-        let currentTheme = localStorage.getItem('theme') || 'sandstone';
+        // Set default theme to Sandstone at the start of every session
+        let currentTheme = sessionStorage.getItem('theme') || 'sandstone';
         setTheme(currentTheme);
 
         dropdownItems.forEach(item => {
@@ -134,7 +134,7 @@
 
         function setTheme(theme) {
             themeLink.href = `https://cdn.jsdelivr.net/npm/bootswatch@5.1.3/dist/${theme}/bootstrap.min.css`;
-            localStorage.setItem('theme', theme);
+            sessionStorage.setItem('theme', theme);
             currentTheme = theme;
             
             // Update dropdown button text
@@ -182,5 +182,43 @@
     }
     </script>
     {% block extra_js %}{% endblock %}
+
+    <!-- Splash Screen Modal -->
+    <div class="modal fade" id="splashModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="splashModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="splashModalLabel">Welcome to Ross's Demo Bookstore</h5>
+          </div>
+          <div class="modal-body">
+            <p>Thank you for visiting my Bookstore demo page.<br>
+               This demo showcases a fully functional web application built using Python and the Flask framework, with a SQL database hosted on Azure.<br>
+               The site is continuously deployed, with updates automatically triggered through GitHub.<br>
+               Feel free to explore the site, create, and edit records. However, I kindly ask that you maintain a respectful and clean environment.<br>
+               For any inquiries or feedback, please feel free to contact me 
+              <a href="mailto:ross.hancher@outlook?subject=Enquirey from Bookstore">here</a></p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" id="acknowledgeSplash">Enter Site</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const splashAcknowledged = sessionStorage.getItem('splashAcknowledged');
+        const splashModal = new bootstrap.Modal(document.getElementById('splashModal'));
+        
+        if (!splashAcknowledged) {
+            splashModal.show();
+        }
+
+        document.getElementById('acknowledgeSplash').addEventListener('click', function() {
+            sessionStorage.setItem('splashAcknowledged', 'true');
+            splashModal.hide();
+        });
+    });
+    </script>
 </body>
 </html>
