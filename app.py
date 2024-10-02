@@ -21,7 +21,7 @@ def get_db_connection():
     return pyodbc.connect(conn_str)
 app = Flask(__name__, static_folder='static')
 # Initialize visitor count
-visitor_count = 151
+visitor_count = 651
 app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
 
 # Database connection configuration
