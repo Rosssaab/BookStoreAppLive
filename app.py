@@ -4,13 +4,36 @@ import secrets
 from datetime import datetime
 from math import ceil
 import os
+import logging
+import requests
 
+# Force current dir
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+print(f"Current working directory: {os.getcwd()}")
+print(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
+
+# Rest of your code...
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+def get_db_connection():
+    logger.debug("Debugger is working")
+    return pyodbc.connect(conn_str)
 app = Flask(__name__, static_folder='static')
 # Initialize visitor count
 visitor_count = 151
 app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
 
 # Database connection configuration
+"""
+server = 'microbox\\sqlexpress'  # Note the 'r' before the string
+database = 'BookstoreDB'
+username = 'Flask'
+password = 'flask'
+driver = '{ODBC Driver 17 for SQL Server}'
+
+
+"""
 server = 'bookstoredatabaseserver.database.windows.net'  # Note the 'r' before the string
 database = 'BookstoreDB'
 username = 'BsAdm'
@@ -18,8 +41,11 @@ password = 'Oracle69#'
 driver = '{ODBC Driver 17 for SQL Server}'
 
 conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
-
+import pdb; pdb.set_trace()
 def get_db_connection():
+    logger.debug("Debugger is working")
+    ip_address = request.remote_addr
+    logger.debug(f"IP Address = [{ip_address}]")
     return pyodbc.connect(conn_str)
 
 # Add the count_visitor function here
@@ -38,8 +64,11 @@ def count_visitor():
 
             # Get location (optional, you can remove this if you don't want to log location)
             try:
-                response = request.get(f'https://ipapi.co/{ip_address}/json/').json()
+                logger.debug(f"IP Address = [{ip_address}]")                          
+                response = request.get('https://ipapi.co/{ip_address}/json/').json()
+                logger.debug(f"response = [{response}]")                             
                 location = response.get('city', '') + ', ' + response.get('country_name', '')
+                logger.debug(f"response = [{location}]")
             except:
                 location = 'Unknown'
 
@@ -388,10 +417,6 @@ def orders():
     
     return render_template('orders.html', orders=formatted_orders, customers=customers, books=books,
                            page=page, total_pages=total_pages, search=search, order_by=order_by)
-
-@app.route('/test')
-def test():
-    return render_template('test.html')
 
 @app.route('/add_country', methods=['POST'])
 def add_country():
