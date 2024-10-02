@@ -41,7 +41,7 @@ password = 'Oracle69#'
 driver = '{ODBC Driver 17 for SQL Server}'
 
 conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
-import pdb; pdb.set_trace()
+# import pdb; pdb.set_trace()
 def get_db_connection():
     logger.debug("Debugger is working")
     ip_address = request.remote_addr
