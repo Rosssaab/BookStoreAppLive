@@ -31,8 +31,6 @@ database = 'BookstoreDB'
 username = 'Flask'
 password = 'flask'
 driver = '{ODBC Driver 17 for SQL Server}'
-
-
 """
 server = 'bookstoredatabaseserver.database.windows.net'  # Note the 'r' before the string
 database = 'BookstoreDB'
