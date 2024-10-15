@@ -6,6 +6,10 @@ from math import ceil
 import os
 import logging
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Force current dir
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -13,38 +17,34 @@ print(f"Current working directory: {os.getcwd()}")
 print(f"Script directory: {os.path.dirname(os.path.abspath(__file__))}")
 
 # Rest of your code...
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def get_db_connection():
-    logger.debug("Debugger is working")
-    return pyodbc.connect(conn_str)
-app = Flask(__name__, static_folder='static')
-# Initialize visitor count
-visitor_count = 651
-app.secret_key = 'your_secret_key_here'  # Change this to a random secret key
+# Initialize Flask app
+app = Flask(__name__)
+app.secret_key = secrets.token_hex(16)  # Generate a random secret key
 
 # Database connection configuration
-"""
-server = 'microbox\\sqlexpress'  # Note the 'r' before the string
-database = 'BookstoreDB'
-username = 'Flask'
-password = 'flask'
-driver = '{ODBC Driver 17 for SQL Server}'
-"""
-server = 'bookstoredatabaseserver.database.windows.net'  # Note the 'r' before the string
-database = 'BookstoreDB'
-username = 'BsAdm'
-password = 'Oracle69#'
-driver = '{ODBC Driver 17 for SQL Server}'
+server = os.getenv('DB_SERVER')
+database = os.getenv('DB_DATABASE')
+username = os.getenv('DB_USERNAME')
+password = os.getenv('DB_PASSWORD')
+driver = os.getenv('DB_DRIVER')
 
 conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
-# import pdb; pdb.set_trace()
+
 def get_db_connection():
-    logger.debug("Debugger is working")
-    ip_address = request.remote_addr
-    logger.debug(f"IP Address = [{ip_address}]")
-    return pyodbc.connect(conn_str)
+    logger.debug("Attempting to establish database connection")
+    try:
+        connection = pyodbc.connect(conn_str)
+        logger.debug("Database connection established successfully")
+        return connection
+    except pyodbc.Error as e:
+        logger.error(f"Error connecting to database: {str(e)}")
+        raise
+
+# Initialize visitor count
+visitor_count = 651
 
 # Add the count_visitor function here
 @app.before_request
@@ -454,5 +454,5 @@ def add_country():
         conn.close()
 
 if __name__ == '__main__':
-       port = int(os.environ.get('PORT', 8000))
-       app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port, debug=True)
