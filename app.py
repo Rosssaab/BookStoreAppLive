@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory, jsonify, session
-import pyodbc
+from sqlalchemy import create_engine, text
 import secrets
 from datetime import datetime
 from math import ceil
@@ -7,9 +7,13 @@ import os
 import logging
 import requests
 from dotenv import load_dotenv
+import urllib.parse
 
-# Load environment variables
+# Load environment variables from .env file
 load_dotenv()
+
+# Instead, use only the SQL Server connection
+engine = create_engine(f"mssql+pyodbc://{os.getenv('DB_USERNAME')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_SERVER')}/{os.getenv('DB_DATABASE')}?driver={os.getenv('DB_DRIVER').replace(' ', '+')}")
 
 # Force current dir
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -23,23 +27,16 @@ logger = logging.getLogger(__name__)
 # Initialize Flask app
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)  # Generate a random secret key
-
-# Database connection configuration
-server = os.getenv('DB_SERVER')
-database = os.getenv('DB_DATABASE')
-username = os.getenv('DB_USERNAME')
-password = os.getenv('DB_PASSWORD')
-driver = os.getenv('DB_DRIVER')
-
-conn_str = f'DRIVER={driver};SERVER={server};DATABASE={database};UID={username};PWD={password}'
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mssql+pyodbc://{os.getenv('DB_USERNAME')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_SERVER')}/{os.getenv('DB_DATABASE')}?driver={os.getenv('DB_DRIVER').replace(' ', '+')}"
+app.config['APPLICATION_ROOT'] = '/BookStore'
 
 def get_db_connection():
     logger.debug("Attempting to establish database connection")
     try:
-        connection = pyodbc.connect(conn_str)
+        connection = engine.connect()
         logger.debug("Database connection established successfully")
         return connection
-    except pyodbc.Error as e:
+    except Exception as e:
         logger.error(f"Error connecting to database: {str(e)}")
         raise
 
@@ -71,13 +68,13 @@ def count_visitor():
                 location = 'Unknown'
 
             # Insert into Visitor_log
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("INSERT INTO Visitor_log (IpAddress, Location) VALUES (?, ?)", ip_address, location)
-            conn.commit()
-            cursor.close()
-            conn.close()
+            try:
 
+                conn = get_db_connection()
+                conn.execute(text("INSERT INTO Visitor_log (IpAddress, Location) VALUES (:ip_address, :location)"), {"ip_address": ip_address, "location": location})
+                conn.close()
+            except:
+                location = 'Unknown'
 # Add the context processor here
 @app.context_processor
 def inject_visitor_count():
@@ -96,48 +93,46 @@ def index():
 @app.route('/visitor_log')
 def secret_visitor_log():
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT TOP 100 * FROM Visitor_log ORDER BY VisitTime DESC")
-    visitors = cursor.fetchall()
+    result = conn.execute(text("SELECT TOP 100 * FROM Visitor_log ORDER BY VisitTime DESC"))
+    visitors = result.fetchall()
     conn.close()
     return render_template('visitor.html', visitors=visitors)
 
 @app.route('/countries', methods=['GET', 'POST'])
 def countries():
     conn = get_db_connection()
-    cursor = conn.cursor()
     
     if request.method == 'POST':
         if 'add' in request.form:
             country_name = request.form['country_name']
-            cursor.execute("INSERT INTO Countries (CountryName) VALUES (?)", country_name)
+            conn.execute(text("INSERT INTO Countries (CountryName) VALUES (:country_name)"), {"country_name": country_name})
             flash('Country added successfully!', 'success')
         elif 'delete' in request.form:
             country_id = request.form['delete']
-            cursor.execute("DELETE FROM Countries WHERE CountryID = ?", country_id)
+            conn.execute(text("DELETE FROM Countries WHERE CountryID = :country_id"), {"country_id": country_id})
             flash('Country deleted successfully!', 'success')
         elif 'edit' in request.form:
             country_id = request.form['edit_country_id']
             country_name = request.form['edit_country_name']
-            cursor.execute("UPDATE Countries SET CountryName = ? WHERE CountryID = ?", country_name, country_id)
+            conn.execute(text("UPDATE Countries SET CountryName = :country_name WHERE CountryID = :country_id"), {"country_name": country_name, "country_id": country_id})
             flash('Country updated successfully!', 'success')
         
         conn.commit()
-        return redirect(url_for('countries'))
+        return redirect(url_for('countries', _external=True).replace('http://www.mywebstuff.co.uk', 'http://www.mywebstuff.co.uk/BookStore'))
     
     # Handle GET request with search and order_by parameters
     search = request.args.get('search', '')
     order_by = request.args.get('order_by', 'CountryName')
     
     # Construct the SQL query
-    query = "SELECT * FROM Countries WHERE CountryName LIKE ?"
-    params = [f'%{search}%']
+    query = "SELECT * FROM Countries WHERE CountryName LIKE :search"
+    params = {"search": f'%{search}%'}
     
     # Add ORDER BY clause
     query += f" ORDER BY {order_by}"
     
-    cursor.execute(query, params)
-    countries = cursor.fetchall()
+    result = conn.execute(text(query), params)
+    countries = result.fetchall()
     conn.close()
     
     return render_template('countries.html', countries=countries)
@@ -145,28 +140,27 @@ def countries():
 @app.route('/genres', methods=['GET', 'POST'])
 def genres():
     conn = get_db_connection()
-    cursor = conn.cursor()
     
     if request.method == 'POST':
         if 'add' in request.form:
             genre_name = request.form['genre_name']
-            cursor.execute("INSERT INTO Genres (GenreName) VALUES (?)", genre_name)
+            conn.execute(text("INSERT INTO Genres (GenreName) VALUES (:genre_name)"), {"genre_name": genre_name})
             flash('Genre added successfully!', 'success')
         elif 'delete' in request.form:
             genre_id = request.form['delete']
-            cursor.execute("DELETE FROM Genres WHERE GenreID = ?", genre_id)
+            conn.execute(text("DELETE FROM Genres WHERE GenreID = :genre_id"), {"genre_id": genre_id})
             flash('Genre deleted successfully!', 'success')
         elif 'edit' in request.form:
             genre_id = request.form['edit_genre_id']
             genre_name = request.form['edit_genre_name']
-            cursor.execute("UPDATE Genres SET GenreName = ? WHERE GenreID = ?", genre_name, genre_id)
+            conn.execute(text("UPDATE Genres SET GenreName = :genre_name WHERE GenreID = :genre_id"), {"genre_name": genre_name, "genre_id": genre_id})
             flash('Genre updated successfully!', 'success')
         
         conn.commit()
-        return redirect(url_for('genres'))
+        return redirect(url_for('genres', _external=True).replace('http://www.mywebstuff.co.uk', 'http://www.mywebstuff.co.uk/BookStore'))
     
-    cursor.execute("SELECT * FROM Genres ORDER BY GenreName")
-    genres = cursor.fetchall()
+    result = conn.execute(text("SELECT * FROM Genres ORDER BY GenreName"))
+    genres = result.fetchall()
     conn.close()
     
     return render_template('genres.html', genres=genres)
@@ -174,7 +168,6 @@ def genres():
 @app.route('/customers', methods=['GET', 'POST'])
 def customers():
     conn = get_db_connection()
-    cursor = conn.cursor()
     
     if request.method == 'POST':
         if 'add' in request.form:
@@ -184,8 +177,8 @@ def customers():
             phone = request.form['phone']
             address = request.form['address']
             country_id = request.form['country_id']
-            cursor.execute("INSERT INTO Customers (FirstName, LastName, Email, Phone, Address, CountryID) VALUES (?, ?, ?, ?, ?, ?)", 
-                           first_name, last_name, email, phone, address, country_id)
+            conn.execute(text("INSERT INTO Customers (FirstName, LastName, Email, Phone, Address, CountryID) VALUES (:first_name, :last_name, :email, :phone, :address, :country_id)"), 
+                           {"first_name": first_name, "last_name": last_name, "email": email, "phone": phone, "address": address, "country_id": country_id})
             flash('Customer added successfully!', 'success')
         elif 'edit' in request.form:
             customer_id = request.form['edit_customer_id']
@@ -195,16 +188,16 @@ def customers():
             phone = request.form['edit_phone']
             address = request.form['edit_address']
             country_id = request.form['edit_country_id']
-            cursor.execute("UPDATE Customers SET FirstName = ?, LastName = ?, Email = ?, Phone = ?, Address = ?, CountryID = ? WHERE CustomerID = ?", 
-                           first_name, last_name, email, phone, address, country_id, customer_id)
+            conn.execute(text("UPDATE Customers SET FirstName = :first_name, LastName = :last_name, Email = :email, Phone = :phone, Address = :address, CountryID = :country_id WHERE CustomerID = :customer_id"), 
+                           {"first_name": first_name, "last_name": last_name, "email": email, "phone": phone, "address": address, "country_id": country_id, "customer_id": customer_id})
             flash('Customer updated successfully!', 'success')
         elif 'delete' in request.form:
             customer_id = request.form['delete']
-            cursor.execute("DELETE FROM Customers WHERE CustomerID = ?", customer_id)
+            conn.execute(text("DELETE FROM Customers WHERE CustomerID = :customer_id"), {"customer_id": customer_id})
             flash('Customer deleted successfully!', 'success')
         
         conn.commit()
-        return redirect(url_for('customers'))
+        return redirect(url_for('customers', _external=True).replace('http://www.mywebstuff.co.uk', 'http://www.mywebstuff.co.uk/BookStore'))
     
     # Handle GET request with search and order_by parameters
     search = request.args.get('search', '')
@@ -215,19 +208,19 @@ def customers():
     SELECT c.CustomerID, c.FirstName, c.LastName, c.Email, c.Phone, c.Address, c.CountryID, co.CountryName 
     FROM Customers c
     LEFT JOIN Countries co ON c.CountryID = co.CountryID
-    WHERE c.FirstName LIKE ? OR c.LastName LIKE ? OR c.Email LIKE ?
+    WHERE c.FirstName LIKE :search OR c.LastName LIKE :search OR c.Email LIKE :search
     """
-    params = [f'%{search}%', f'%{search}%', f'%{search}%']
+    params = {"search": f'%{search}%'}
     
     # Add ORDER BY clause
     query += f" ORDER BY {order_by}"
     
-    cursor.execute(query, params)
-    customers = cursor.fetchall()
+    result = conn.execute(text(query), params)
+    customers = result.fetchall()
     
     # Fetch countries for the dropdown
-    cursor.execute("SELECT CountryID, CountryName FROM Countries ORDER BY CountryName")
-    countries = cursor.fetchall()
+    result = conn.execute(text("SELECT CountryID, CountryName FROM Countries ORDER BY CountryName"))
+    countries = result.fetchall()
     
     conn.close()
     
@@ -236,7 +229,6 @@ def customers():
 @app.route('/books', methods=['GET', 'POST'])
 def books():
     conn = get_db_connection()
-    cursor = conn.cursor()
     
     if request.method == 'POST':
         if 'add' in request.form:
@@ -245,8 +237,8 @@ def books():
             genre_id = request.form['genre_id'] if request.form['genre_id'] else None
             price = request.form['price']
             stock_quantity = request.form['stock_quantity']
-            cursor.execute("INSERT INTO Books (Title, Author, GenreID, Price, StockQuantity) VALUES (?, ?, ?, ?, ?)", 
-                           title, author, genre_id, price, stock_quantity)
+            conn.execute(text("INSERT INTO Books (Title, Author, GenreID, Price, StockQuantity) VALUES (:title, :author, :genre_id, :price, :stock_quantity)"), 
+                           {"title": title, "author": author, "genre_id": genre_id, "price": price, "stock_quantity": stock_quantity})
             flash('Book added successfully!', 'success')
         elif 'edit' in request.form:
             book_id = request.form['edit_book_id']
@@ -255,16 +247,16 @@ def books():
             genre_id = request.form['edit_genre_id'] if request.form['edit_genre_id'] else None
             price = request.form['edit_price']
             stock_quantity = request.form['edit_stock_quantity']
-            cursor.execute("UPDATE Books SET Title = ?, Author = ?, GenreID = ?, Price = ?, StockQuantity = ? WHERE BookID = ?", 
-                           title, author, genre_id, price, stock_quantity, book_id)
+            conn.execute(text("UPDATE Books SET Title = :title, Author = :author, GenreID = :genre_id, Price = :price, StockQuantity = :stock_quantity WHERE BookID = :book_id"), 
+                           {"title": title, "author": author, "genre_id": genre_id, "price": price, "stock_quantity": stock_quantity, "book_id": book_id})
             flash('Book updated successfully!', 'success')
         elif 'delete' in request.form:
             book_id = request.form['delete']
-            cursor.execute("DELETE FROM Books WHERE BookID = ?", book_id)
+            conn.execute(text("DELETE FROM Books WHERE BookID = :book_id"), {"book_id": book_id})
             flash('Book deleted successfully!', 'success')
         
         conn.commit()
-        return redirect(url_for('books'))
+        return redirect(url_for('books', _external=True).replace('http://www.mywebstuff.co.uk', 'http://www.mywebstuff.co.uk/BookStore'))
     
     # Handle GET request with search, order_by, and page parameters
     search = request.args.get('search', '')
@@ -277,12 +269,12 @@ def books():
     SELECT COUNT(*) 
     FROM Books b
     LEFT JOIN Genres g ON b.GenreID = g.GenreID
-    WHERE b.Title LIKE ? OR b.Author LIKE ?
+    WHERE b.Title LIKE :search OR b.Author LIKE :search
     """
-    count_params = [f'%{search}%', f'%{search}%']
+    count_params = {"search": f'%{search}%'}
     
-    cursor.execute(count_query, count_params)
-    total_books = cursor.fetchone()[0]
+    result = conn.execute(text(count_query), count_params)
+    total_books = result.fetchone()[0]
     total_pages = ceil(total_books / per_page)
     
     # Construct the SQL query for fetching books with pagination
@@ -290,9 +282,9 @@ def books():
     SELECT b.BookID, b.Title, b.Author, b.GenreID, b.Price, b.StockQuantity, g.GenreName 
     FROM Books b
     LEFT JOIN Genres g ON b.GenreID = g.GenreID
-    WHERE b.Title LIKE ? OR b.Author LIKE ?
+    WHERE b.Title LIKE :search OR b.Author LIKE :search
     """
-    params = [f'%{search}%', f'%{search}%']
+    params = {"search": f'%{search}%'}
     
     # Add ORDER BY clause
     query += f" ORDER BY {order_by}"
@@ -300,8 +292,8 @@ def books():
     # Add OFFSET and FETCH for pagination
     query += f" OFFSET {(page - 1) * per_page} ROWS FETCH NEXT {per_page} ROWS ONLY"
     
-    cursor.execute(query, params)
-    books = cursor.fetchall()
+    result = conn.execute(text(query), params)
+    books = result.fetchall()
     
     # Format prices
     formatted_books = []
@@ -311,8 +303,8 @@ def books():
         formatted_books.append(formatted_book)
     
     # Fetch genres for the dropdown
-    cursor.execute("SELECT GenreID, GenreName FROM Genres ORDER BY GenreName")
-    genres = cursor.fetchall()
+    result = conn.execute(text("SELECT GenreID, GenreName FROM Genres ORDER BY GenreName"))
+    genres = result.fetchall()
     
     conn.close()
     
@@ -322,7 +314,6 @@ def books():
 @app.route('/orders', methods=['GET', 'POST'])
 def orders():
     conn = get_db_connection()
-    cursor = conn.cursor()
     
     if request.method == 'POST':
         if 'add' in request.form:
@@ -330,11 +321,11 @@ def orders():
             book_id = request.form['book_id']
             quantity = request.form['quantity']
             # Calculate total price based on book price and quantity
-            cursor.execute("SELECT Price FROM Books WHERE BookID = ?", book_id)
-            book_price = cursor.fetchone()[0]
+            result = conn.execute(text("SELECT Price FROM Books WHERE BookID = :book_id"), {"book_id": book_id})
+            book_price = result.fetchone()[0]
             total_price = float(book_price) * int(quantity)
-            cursor.execute("INSERT INTO Orders (CustomerID, BookID, Quantity, TotalPrice) VALUES (?, ?, ?, ?)", 
-                           customer_id, book_id, quantity, total_price)
+            conn.execute(text("INSERT INTO Orders (CustomerID, BookID, Quantity, TotalPrice) VALUES (:customer_id, :book_id, :quantity, :total_price)"), 
+                           {"customer_id": customer_id, "book_id": book_id, "quantity": quantity, "total_price": total_price})
             flash('Order added successfully!', 'success')
         elif 'edit' in request.form:
             order_id = request.form['edit_order_id']
@@ -342,19 +333,19 @@ def orders():
             book_id = request.form['edit_book_id']
             quantity = request.form['edit_quantity']
             # Recalculate total price
-            cursor.execute("SELECT Price FROM Books WHERE BookID = ?", book_id)
-            book_price = cursor.fetchone()[0]
+            result = conn.execute(text("SELECT Price FROM Books WHERE BookID = :book_id"), {"book_id": book_id})
+            book_price = result.fetchone()[0]
             total_price = float(book_price) * int(quantity)
-            cursor.execute("UPDATE Orders SET CustomerID = ?, BookID = ?, Quantity = ?, TotalPrice = ? WHERE OrderID = ?", 
-                           customer_id, book_id, quantity, total_price, order_id)
+            conn.execute(text("UPDATE Orders SET CustomerID = :customer_id, BookID = :book_id, Quantity = :quantity, TotalPrice = :total_price WHERE OrderID = :order_id"), 
+                           {"customer_id": customer_id, "book_id": book_id, "quantity": quantity, "total_price": total_price, "order_id": order_id})
             flash('Order updated successfully!', 'success')
         elif 'delete' in request.form:
             order_id = request.form['delete']
-            cursor.execute("DELETE FROM Orders WHERE OrderID = ?", order_id)
+            conn.execute(text("DELETE FROM Orders WHERE OrderID = :order_id"), {"order_id": order_id})
             flash('Order deleted successfully!', 'success')
         
         conn.commit()
-        return redirect(url_for('orders'))
+        return redirect(url_for('orders', _external=True).replace('http://www.mywebstuff.co.uk', 'http://www.mywebstuff.co.uk/BookStore'))
     
     # Handle GET request with search, order_by, and page parameters
     search = request.args.get('search', '')
@@ -368,12 +359,12 @@ def orders():
     FROM Orders o
     JOIN Customers c ON o.CustomerID = c.CustomerID
     JOIN Books b ON o.BookID = b.BookID
-    WHERE CAST(o.OrderID AS NVARCHAR) LIKE ? OR c.FirstName LIKE ? OR c.LastName LIKE ? OR b.Title LIKE ?
+    WHERE CAST(o.OrderID AS NVARCHAR) LIKE :search OR c.FirstName LIKE :search OR c.LastName LIKE :search OR b.Title LIKE :search
     """
-    count_params = [f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%']
+    count_params = {"search": f'%{search}%'}
     
-    cursor.execute(count_query, count_params)
-    total_orders = cursor.fetchone()[0]
+    result = conn.execute(text(count_query), count_params)
+    total_orders = result.fetchone()[0]
     total_pages = (total_orders + per_page - 1) // per_page
     
     # Construct the SQL query for fetching orders with pagination
@@ -382,9 +373,9 @@ def orders():
     FROM Orders o
     JOIN Customers c ON o.CustomerID = c.CustomerID
     JOIN Books b ON o.BookID = b.BookID
-    WHERE CAST(o.OrderID AS NVARCHAR) LIKE ? OR c.FirstName LIKE ? OR c.LastName LIKE ? OR b.Title LIKE ?
+    WHERE CAST(o.OrderID AS NVARCHAR) LIKE :search OR c.FirstName LIKE :search OR c.LastName LIKE :search OR b.Title LIKE :search
     """
-    params = [f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%']
+    params = {"search": f'%{search}%'}
     
     # Add ORDER BY clause
     query += f" ORDER BY {order_by}"
@@ -392,8 +383,8 @@ def orders():
     # Add OFFSET and FETCH for pagination
     query += f" OFFSET {(page - 1) * per_page} ROWS FETCH NEXT {per_page} ROWS ONLY"
     
-    cursor.execute(query, params)
-    orders = cursor.fetchall()
+    result = conn.execute(text(query), params)
+    orders = result.fetchall()
     
     # Format dates and prices
     formatted_orders = []
@@ -404,12 +395,12 @@ def orders():
         formatted_orders.append(formatted_order)
     
     # Fetch customers for the dropdown
-    cursor.execute("SELECT CustomerID, FirstName, LastName FROM Customers ORDER BY LastName, FirstName")
-    customers = cursor.fetchall()
+    result = conn.execute(text("SELECT CustomerID, FirstName, LastName FROM Customers ORDER BY LastName, FirstName"))
+    customers = result.fetchall()
     
     # Fetch books for the dropdown
-    cursor.execute("SELECT BookID, Title FROM Books ORDER BY Title")
-    books = cursor.fetchall()
+    result = conn.execute(text("SELECT BookID, Title FROM Books ORDER BY Title"))
+    books = result.fetchall()
     
     conn.close()
     
@@ -428,19 +419,18 @@ def add_country():
         return jsonify({'success': False, 'message': 'Country name is required'}), 400
 
     conn = get_db_connection()
-    cursor = conn.cursor()
 
     try:
         # Check if country already exists
-        cursor.execute("SELECT CountryID FROM Countries WHERE CountryName = ?", (new_country_name,))
-        existing_country = cursor.fetchone()
+        result = conn.execute(text("SELECT CountryID FROM Countries WHERE CountryName = :country_name"), {"country_name": new_country_name})
+        existing_country = result.fetchone()
 
         if existing_country:
             return jsonify({'success': False, 'message': 'Country already exists'}), 400
 
         # Add new country
-        cursor.execute("INSERT INTO Countries (CountryName) OUTPUT INSERTED.CountryID VALUES (?)", (new_country_name,))
-        new_country_id = cursor.fetchone()[0]
+        result = conn.execute(text("INSERT INTO Countries (CountryName) OUTPUT INSERTED.CountryID VALUES (:country_name)"), {"country_name": new_country_name})
+        new_country_id = result.fetchone()[0]
         conn.commit()
 
         return jsonify({'success': True, 'country_id': new_country_id}), 200
@@ -450,8 +440,14 @@ def add_country():
         return jsonify({'success': False, 'message': str(e)}), 500
 
     finally:
-        cursor.close()
         conn.close()
+
+# @app.route('/DvlaSearch/')
+# @app.route('/DvlaSearch')
+# @app.route('/dvlasearch/')
+# @app.route('/dvlasearch')
+# def dvla_search():
+#     return render_template('dvla_search.html')
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8085))
