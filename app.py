@@ -168,8 +168,11 @@ def genres():
 @app.route('/customers', methods=['GET', 'POST'])
 def customers():
     conn = get_db_connection()
-    
     if request.method == 'POST':
+        # Add debugging
+        print("POST request received")
+        print("Form data:", request.form)
+        
         if 'add' in request.form:
             first_name = request.form['first_name']
             last_name = request.form['last_name']
@@ -181,22 +184,52 @@ def customers():
                            {"first_name": first_name, "last_name": last_name, "email": email, "phone": phone, "address": address, "country_id": country_id})
             flash('Customer added successfully!', 'success')
         elif 'edit' in request.form:
-            customer_id = request.form['edit_customer_id']
-            first_name = request.form['edit_first_name']
-            last_name = request.form['edit_last_name']
-            email = request.form['edit_email']
-            phone = request.form['edit_phone']
-            address = request.form['edit_address']
-            country_id = request.form['edit_country_id']
-            conn.execute(text("UPDATE Customers SET FirstName = :first_name, LastName = :last_name, Email = :email, Phone = :phone, Address = :address, CountryID = :country_id WHERE CustomerID = :customer_id"), 
-                           {"first_name": first_name, "last_name": last_name, "email": email, "phone": phone, "address": address, "country_id": country_id, "customer_id": customer_id})
-            flash('Customer updated successfully!', 'success')
-        elif 'delete' in request.form:
-            customer_id = request.form['delete']
-            conn.execute(text("DELETE FROM Customers WHERE CustomerID = :customer_id"), {"customer_id": customer_id})
-            flash('Customer deleted successfully!', 'success')
+            try:
+                customer_id = request.form['edit_customer_id']
+                first_name = request.form['edit_first_name']
+                last_name = request.form['edit_last_name']
+                email = request.form['edit_email']
+                phone = request.form['edit_phone']
+                address = request.form['edit_address']
+                country_id = request.form['edit_country_id']
+                
+                # Debug print
+                print(f"Updating customer {customer_id} with data:", {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "email": email,
+                    "phone": phone,
+                    "address": address,
+                    "country_id": country_id
+                })
+                
+                # Execute the update
+                conn.execute(text("""
+                    UPDATE Customers 
+                    SET FirstName = :first_name, 
+                        LastName = :last_name, 
+                        Email = :email, 
+                        Phone = :phone, 
+                        Address = :address, 
+                        CountryID = :country_id 
+                    WHERE CustomerID = :customer_id
+                """), {
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "email": email,
+                    "phone": phone,
+                    "address": address,
+                    "country_id": country_id,
+                    "customer_id": customer_id
+                })
+                
+                conn.commit()
+                flash('Customer updated successfully!', 'success')
+            except Exception as e:
+                print("Error updating customer:", str(e))
+                conn.rollback()
+                flash('Error updating customer: ' + str(e), 'error')
         
-        conn.commit()
         return redirect(url_for('customers', _external=True).replace('http://www.mywebstuff.co.uk', 'http://www.mywebstuff.co.uk/BookStore'))
     
     # Handle GET request with search and order_by parameters
